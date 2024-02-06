@@ -28,7 +28,6 @@ class PokerPlayer:
         allValue = sorted([i[1] for i in allCards])
         reversedValue = sorted([i[1] for i in allCards], reverse=True)
         allSign = sorted([i[2] for i in allCards])
-        ic(self.hand, center, allCards, allValue, allSign)
 
         suiteList = []
         for nb in range(0, 3):
@@ -119,7 +118,6 @@ class PokerPlayer:
         elif count == 0:
             self.PValue = 0, combi
 
-        ic(self.PValue)
 
 def getDeck():
     deck = []
@@ -150,7 +148,9 @@ def comparer(playerList):
                             break
                 elif player.getPValue()[0] > player2.getPValue()[0]:
                     player.setScore(player.score + 1)
-    # return player with best score !
+    playerScore = [player.score for player in playerList]
+    players = {player.score : player for player in playerList}
+    return players[max(playerScore)]
 
 def splitPlayer(deck, nb):
     # Deck is a list defined by the function getDeck
@@ -182,12 +182,12 @@ def poker(deck, nbPlayer):
         return
 
     for n in range(nbPlayer):
-        name = "Nom Joueur" # input("Nom du Joueur "+str(n+1))
+        name = input("Nom du Joueur "+str(n+1))
         hand = deck[0:2]
         del(deck[0:2])
         PlayerList.append(PokerPlayer(name, hand))
     center = deck[0:5]
 
-    comparer(PlayerList)
+    ic(comparer(PlayerList).name)
 
 poker(getDeck(), 3)
