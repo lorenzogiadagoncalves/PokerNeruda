@@ -4,10 +4,13 @@ from icecream import ic
 
 
 class PokerPlayer:
-    def __init__(self, name = "Player X", hand = [], PValue = None, score = 0):
+    def __init__(self, name = "Unnammed Player", hand = [], PValue = None, score = 0, bet = 1000, roundBet = 0):
         self.name = name
         self.hand = hand
         self.PValue = PValue
+        self.score = score
+        self.bet = bet
+        self.roundBet = roundBet
 
     def setHand(self, list):
         self.hand = list
@@ -17,13 +20,11 @@ class PokerPlayer:
     def aff(self):
         return [self.name, self.hand]
 
-    def getPValue(self):
-        if self.PValue == None:
-            self.getCombi()
+    def getPValue(self, center):
+        self.getCombi(center)
         return self.PValue
 
-    def getCombi(self):
-        global center
+    def getCombi(self, center):
         allCards = self.hand + center
         allValue = sorted([i[1] for i in allCards])
         reversedValue = sorted([i[1] for i in allCards], reverse=True)
@@ -52,7 +53,6 @@ class PokerPlayer:
                     done.append(subset[0])
         if len(combination) <= 1:
             combination.append([])
-        ic(combination)
 
         # interpréter les résultats de la liste combination
         combi = tuple
@@ -62,11 +62,11 @@ class PokerPlayer:
                 for k in combination[0]:
                     if k in reversedValue:
                         reversedValue.remove(k)
-                combi = combination[0], reversedValue[0]
+                combi = combination[0], [reversedValue[0]]
             elif len(combination[0]) == 3:
                 if len(combination[1]) in [2, 3]:
                     count = 4
-                    combi = combination[0], [combination[1][0:2]]
+                    combi = combination[0], combination[1][0:2]
                 else:
                     count = 3
                     for k in combination[0]:
@@ -99,24 +99,31 @@ class PokerPlayer:
                 list.append(elem2)
         combi = list
 
+
         if flushList in suiteList or suiteList in flushList:
-            self.PValue = 8, ([k for k in flushList if k in suiteList],)
+            self.PValue = (8, ([k for k in flushList if k in suiteList],))
         elif count == 5:
-            self.PValue = 7, combi
+            self.PValue = (7, combi)
         elif count == 4:
-            self.PValue = 6, combi
+            self.PValue = (6, combi)
         elif flushList != []:
-            self.PValue = 5, (flushList[0:5],)
+            self.PValue = (5, (flushList[0:5],))
         elif suiteList != []:
-            self.PValue = 4, (suiteList[0:5],)
+            self.PValue = (4, (suiteList[0:5],))
         elif count == 3:
-            self.PValue = 3, combi
+            self.PValue = (3, combi)
         elif count == 2:
-            self.PValue = 2, combi
+            self.PValue = (2, combi)
         elif count == 1:
-            self.PValue = 1, combi
+            self.PValue = (1, combi)
         elif count == 0:
-            self.PValue = 0, combi
+            self.PValue = (0, combi)
+    def paris(self, amount):
+        global pot
+        if self.bet >= amount:
+            self.bet -= amount
+            self.roundBet += amount
+            pot += amount
 
 
 def getDeck():
@@ -133,20 +140,17 @@ def piocher(deck):
     print(deck[0][0])
     del deck[0]
 
-def afficher(card):
-    print(card[0])
-
-def comparer(playerList):
+def comparer(playerList, center):
     for player in playerList:
         player.setScore(0)
         for player2 in playerList:
             if player != player2:
-                if player.getPValue()[0] == player2.getPValue()[0]:
-                    for n in range(5):
-                        if player.getPValue()[1][n] > player2.getPValue()[1][n]:
+                if player.getPValue(center)[0] == player2.getPValue(center)[0]:
+                    for n in range(len(player.getPValue(center)[1])):
+                        if player.getPValue(center)[1][n] > player2.getPValue(center)[1][n]:
                             player.setScore(player.score + 1)
                             break
-                elif player.getPValue()[0] > player2.getPValue()[0]:
+                elif player.getPValue(center)[0] > player2.getPValue(center)[0]:
                     player.setScore(player.score + 1)
     playerScore = [player.score for player in playerList]
     players = {player.score : player for player in playerList}
@@ -172,22 +176,43 @@ def splitCards(deck, nbCards, nbDeck = 52):
         del(deck[0:nbCards])
     return splittedDeck, deck
 
+def round(playerList, blinde = 0):
+    global pot
+    deck = getDeck()
+    center = deck[0:5]
+    del(deck[0:5])
+    pot = 0
+    for player in playerList:
+        if player.bet > 0:
+            player.setHand(deck[0:2])
+            ic(player.name, player.bet)
+            del(deck[0:2])
+        else:
+            playerList.remove(player)
 
-def poker(deck, nbPlayer):
-    PlayerList = []
-    global center
+    if len(playerList) > 1:
+        playerList[blinde].paris(100)
+        blinde = blinde + 1 if blinde + 1 <= len(playerList) - 1 else 0
+        playerList[blinde].paris(50)
+        comparer(playerList, center).bet += pot
+        round(playerList, blinde)
+    else:
+        winner = playerList[0]
+        print(f"Winner: {winner.name} ({winner.bet})")
 
-    if len(deck) - 5 < nbPlayer * 2:
-        print("Trop de joueurs pour un deck de " + str(len(deck)) + " cartes.")
+
+def poker(nbPlayer):
+    global pot, blinde
+    playerList = []
+    pot = 0
+    blinde = 0
+
+    if 47 < nbPlayer * 2:
+        print("Trop de joueurs pour un deck de 52 cartes.")
         return
 
     for n in range(nbPlayer):
         name = input("Nom du Joueur "+str(n+1))
-        hand = deck[0:2]
-        del(deck[0:2])
-        PlayerList.append(PokerPlayer(name, hand))
-    center = deck[0:5]
-
-    ic(comparer(PlayerList).name)
-
-poker(getDeck(), 3)
+        playerList.append(PokerPlayer(name))
+    round(playerList)
+poker(5)
